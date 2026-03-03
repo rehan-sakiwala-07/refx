@@ -1,0 +1,1096 @@
+package com.capestone.hrms_backend.entity.social;
+
+import com.capestone.hrms_backend.entity.organization.Employee;
+import com.capestone.hrms_backend.entity.shared.Base;
+import jakarta.persistence.*;
+import lombok.Getter;
+import lombok.NoArgsConstructor;
+import lombok.Setter;
+
+import java.time.LocalDateTime;
+import java.util.HashSet;
+import java.util.Set;
+
+@Entity
+@Table(
+        name = "social_posts",
+        indexes = {
+                @Index(name = "idx_social_posts_created_at", columnList = "created_at"),
+                @Index(name = "idx_social_posts_author", columnList = "author_id"),
+                @Index(name = "idx_social_posts_deleted_at", columnList = "deleted_at")
+        }
+)
+@Getter
+@Setter
+@NoArgsConstructor
+public class SocialPost extends Base {
+
+    @Id
+    @GeneratedValue(strategy = GenerationType.IDENTITY)
+    private Long id;
+
+    @ManyToOne(fetch = FetchType.LAZY, optional = false)
+    @JoinColumn(name = "author_id", nullable = false)
+    private Employee author;
+
+    @Column(nullable = false, length = 200)
+    private String title;
+
+    @Lob
+    @Column(nullable = false)
+    private String description;
+
+    @Enumerated(EnumType.STRING)
+    @Column(nullable = false, length = 32)
+    private SocialVisibility visibility = SocialVisibility.ALL;
+
+    @Column(name = "is_system_generated", nullable = false)
+    private boolean systemGenerated = false;
+
+    @Enumerated(EnumType.STRING)
+    @Column(name = "system_post_type", length = 32)
+    private SocialCelebrationType systemPostType;
+
+    @Column(name = "deleted_at")
+    private LocalDateTime deletedAt;
+
+    @Column(name = "like_count", nullable = false)
+    private int likeCount = 0;
+
+    @Column(name = "comment_count", nullable = false)
+    private int commentCount = 0;
+
+    @ManyToMany(fetch = FetchType.LAZY)
+    @JoinTable(
+            name = "social_post_tags",
+            joinColumns = @JoinColumn(name = "post_id"),
+            inverseJoinColumns = @JoinColumn(name = "tag_id"),
+            uniqueConstraints = @UniqueConstraint(name = "uk_social_post_tag", columnNames = {"post_id", "tag_id"}),
+            indexes = {
+                    @Index(name = "idx_social_post_tags_post", columnList = "post_id"),
+                    @Index(name = "idx_social_post_tags_tag", columnList = "tag_id")
+            }
+    )
+    private Set<SocialTag> tags = new HashSet<>();
+}
+
+
+
+package com.capestone.hrms_backend.entity.social;
+
+import com.capestone.hrms_backend.entity.organization.Employee;
+import com.capestone.hrms_backend.entity.shared.Base;
+import jakarta.persistence.*;
+import lombok.Getter;
+import lombok.NoArgsConstructor;
+import lombok.Setter;
+
+import java.time.LocalDateTime;
+
+@Entity
+@Table(
+        name = "social_post_comments",
+        indexes = {
+                @Index(name = "idx_social_comments_post", columnList = "post_id"),
+                @Index(name = "idx_social_comments_author", columnList = "author_id"),
+                @Index(name = "idx_social_comments_deleted_at", columnList = "deleted_at")
+        }
+)
+@Getter
+@Setter
+@NoArgsConstructor
+public class SocialPostComment extends Base {
+
+    @Id
+    @GeneratedValue(strategy = GenerationType.IDENTITY)
+    private Long id;
+
+    @ManyToOne(fetch = FetchType.LAZY, optional = false)
+    @JoinColumn(name = "post_id", nullable = false)
+    private SocialPost post;
+
+    @ManyToOne(fetch = FetchType.LAZY, optional = false)
+    @JoinColumn(name = "author_id", nullable = false)
+    private Employee author;
+
+    @Lob
+    @Column(nullable = false)
+    private String text;
+
+    @Column(name = "deleted_at")
+    private LocalDateTime deletedAt;
+}
+
+
+
+
+package com.capestone.hrms_backend.entity.social;
+
+import com.capestone.hrms_backend.entity.organization.Employee;
+import jakarta.persistence.*;
+import lombok.Getter;
+import lombok.NoArgsConstructor;
+import lombok.Setter;
+import org.hibernate.annotations.CreationTimestamp;
+
+import java.time.LocalDateTime;
+
+@Entity
+@Table(
+        name = "social_post_likes",
+        uniqueConstraints = @UniqueConstraint(name = "uk_social_like_post_employee", columnNames = {"post_id", "employee_id"}),
+        indexes = {
+                @Index(name = "idx_social_likes_post", columnList = "post_id"),
+                @Index(name = "idx_social_likes_employee", columnList = "employee_id")
+        }
+)
+@Getter
+@Setter
+@NoArgsConstructor
+public class SocialPostLike {
+
+    @Id
+    @GeneratedValue(strategy = GenerationType.IDENTITY)
+    private Long id;
+
+    @ManyToOne(fetch = FetchType.LAZY, optional = false)
+    @JoinColumn(name = "post_id", nullable = false)
+    private SocialPost post;
+
+    @ManyToOne(fetch = FetchType.LAZY, optional = false)
+    @JoinColumn(name = "employee_id", nullable = false)
+    private Employee employee;
+
+    @CreationTimestamp
+    @Column(name = "created_at", nullable = false, updatable = false)
+    private LocalDateTime createdAt;
+}
+
+
+package com.capestone.hrms_backend.entity.social;
+
+import jakarta.persistence.*;
+import lombok.Getter;
+import lombok.NoArgsConstructor;
+import lombok.Setter;
+
+@Entity
+@Table(
+        name = "social_tags",
+        uniqueConstraints = @UniqueConstraint(name = "uk_social_tag_name", columnNames = "name"),
+        indexes = @Index(name = "idx_social_tag_name", columnList = "name")
+)
+@Getter
+@Setter
+@NoArgsConstructor
+public class SocialTag {
+
+    @Id
+    @GeneratedValue(strategy = GenerationType.IDENTITY)
+    private Long id;
+
+    @Column(nullable = false, length = 64)
+    private String name;
+}
+
+
+
+package com.capestone.hrms_backend.entity.social;
+
+public enum SocialVisibility {
+    ALL,
+    DEPARTMENT,
+    MANAGER_ONLY
+}
+
+
+
+package com.capestone.hrms_backend.entity.social;
+
+import com.capestone.hrms_backend.entity.organization.Employee;
+import com.capestone.hrms_backend.entity.shared.Base;
+import jakarta.persistence.*;
+import lombok.Getter;
+import lombok.NoArgsConstructor;
+import lombok.Setter;
+
+import java.time.LocalDate;
+
+@Entity
+@Table(
+        name = "social_celebration_records",
+        uniqueConstraints = @UniqueConstraint(
+                name = "uk_social_celebration_employee_type_date",
+                columnNames = {"employee_id", "celebration_type", "celebration_date"}
+        )
+)
+@Getter
+@Setter
+@NoArgsConstructor
+public class SocialCelebrationRecord extends Base {
+
+    @Id
+    @GeneratedValue(strategy = GenerationType.IDENTITY)
+    private Long id;
+
+    @ManyToOne(fetch = FetchType.LAZY, optional = false)
+    @JoinColumn(name = "employee_id", nullable = false)
+    private Employee employee;
+
+    @Enumerated(EnumType.STRING)
+    @Column(name = "celebration_type", nullable = false, length = 32)
+    private SocialCelebrationType celebrationType;
+
+    @Column(name = "celebration_date", nullable = false)
+    private LocalDate celebrationDate;
+
+    @ManyToOne(fetch = FetchType.LAZY, optional = false)
+    @JoinColumn(name = "post_id", nullable = false)
+    private SocialPost post;
+}
+
+
+
+package com.capestone.hrms_backend.entity.social;
+
+public enum SocialCelebrationType {
+    BIRTHDAY,
+    WORK_ANNIVERSARY
+}
+
+
+
+boolean existsByEmployeeIdAndCelebrationTypeAndCelebrationDate(
+            Long employeeId,
+            SocialCelebrationType celebrationType,
+            LocalDate celebrationDateboolean existsByEmployeeIdAndCelebrationTypeAndCelebrationDate(
+            Long employeeId,
+            SocialCelebrationType celebrationType,
+            LocalDate celebrationDate
+
+@EntityGraph(attributePaths = {"author"})
+    Optional<SocialPostComment> findByIdAndDeletedAtIsNull(Long id);
+
+    @EntityGraph(attributePaths = {"author"})
+    Page<SocialPostComment> findByPostAndDeletedAtIsNull(SocialPost post, Pageable pageable);
+
+    @EntityGraph(attributePaths = {"author"})
+    List<SocialPostComment> findTop5ByPostAndDeletedAtIsNullOrderByCreatedAtDesc(SocialPost post);
+
+
+
+Optional<SocialPostLike> findByPostAndEmployee(SocialPost post, Employee employee);
+
+
+@EntityGraph(attributePaths = {"author", "tags"})
+    Optional<SocialPost> findByIdAndDeletedAtIsNull(Long id);
+
+    @EntityGraph(attributePaths = {"author", "tags"})
+    @Query("""
+           SELECT DISTINCT p FROM SocialPost p
+           LEFT JOIN p.tags t
+           WHERE p.deletedAt IS NULL
+             AND (:authorId IS NULL OR p.author.id = :authorId)
+             AND (:tag IS NULL OR LOWER(t.name) = LOWER(:tag))
+             AND (:fromDate IS NULL OR p.createdAt >= :fromDate)
+             AND (:toDate IS NULL OR p.createdAt <= :toDate)
+           """)
+    Page<SocialPost> findFeed(
+            @Param("authorId") Long authorId,
+            @Param("tag") String tag,
+            @Param("fromDate") LocalDateTime fromDate,
+            @Param("toDate") LocalDateTime toDate,
+            Pageable pageable
+    );
+
+Optional<SocialTag> findByNameIgnoreCase(String name);
+
+
+
+package com.capestone.hrms_backend.service;
+
+import com.capestone.hrms_backend.dto.social.request.SocialPostCreateRequest;
+import com.capestone.hrms_backend.dto.social.request.SocialPostUpdateRequest;
+import com.capestone.hrms_backend.dto.social.response.SocialLikeResponse;
+import com.capestone.hrms_backend.dto.social.response.SocialPostResponse;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
+
+import java.time.LocalDateTime;
+
+public interface ISocialPostService {
+    SocialPostResponse createPost(Long actorEmployeeId, SocialPostCreateRequest request);
+    SocialPostResponse getPost(Long postId);
+    Page<SocialPostResponse> getFeed(Long authorId, String tag, LocalDateTime from, LocalDateTime to, Pageable pageable);
+    SocialPostResponse updatePost(Long postId, Long actorEmployeeId, boolean actorIsHr, SocialPostUpdateRequest request);
+    void deletePost(Long postId, Long actorEmployeeId, boolean actorIsHr, String reason);
+    SocialLikeResponse likePost(Long postId, Long actorEmployeeId);
+    void unlikePost(Long postId, Long actorEmployeeId);
+}
+
+
+package com.capestone.hrms_backend.service;
+
+import com.capestone.hrms_backend.dto.social.request.SocialCommentCreateRequest;
+import com.capestone.hrms_backend.dto.social.request.SocialCommentUpdateRequest;
+import com.capestone.hrms_backend.dto.social.response.SocialCommentResponse;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
+
+public interface ISocialCommentService {
+    Page<SocialCommentResponse> listComments(Long postId, Pageable pageable);
+    SocialCommentResponse addComment(Long postId, Long actorEmployeeId, SocialCommentCreateRequest request);
+    SocialCommentResponse updateComment(Long commentId, Long actorEmployeeId, boolean actorIsHr, SocialCommentUpdateRequest request);
+    void deleteComment(Long commentId, Long actorEmployeeId, boolean actorIsHr, String reason);
+}
+
+
+
+void runDaily();
+
+
+package com.capestone.hrms_backend.service.impl;
+
+import com.capestone.hrms_backend.dto.social.request.SocialPostCreateRequest;
+import com.capestone.hrms_backend.dto.social.request.SocialPostUpdateRequest;
+import com.capestone.hrms_backend.dto.social.response.SocialActorResponse;
+import com.capestone.hrms_backend.dto.social.response.SocialCommentResponse;
+import com.capestone.hrms_backend.dto.social.response.SocialLikeResponse;
+import com.capestone.hrms_backend.dto.social.response.SocialPostResponse;
+import com.capestone.hrms_backend.entity.organization.Employee;
+import com.capestone.hrms_backend.entity.social.SocialPost;
+import com.capestone.hrms_backend.entity.social.SocialPostComment;
+import com.capestone.hrms_backend.entity.social.SocialPostLike;
+import com.capestone.hrms_backend.entity.social.SocialTag;
+import com.capestone.hrms_backend.entity.social.SocialVisibility;
+import com.capestone.hrms_backend.exception.BusinessException;
+import com.capestone.hrms_backend.exception.ResourceNotFoundException;
+import com.capestone.hrms_backend.repository.organization.EmployeeRepository;
+import com.capestone.hrms_backend.repository.social.SocialPostCommentRepository;
+import com.capestone.hrms_backend.repository.social.SocialPostLikeRepository;
+import com.capestone.hrms_backend.repository.social.SocialPostRepository;
+import com.capestone.hrms_backend.repository.social.SocialTagRepository;
+import com.capestone.hrms_backend.service.IEmailService;
+import com.capestone.hrms_backend.service.ISocialPostService;
+import lombok.RequiredArgsConstructor;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
+import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
+
+import java.time.LocalDateTime;
+import java.util.*;
+
+@Service
+@RequiredArgsConstructor
+public class SocialPostServiceImpl implements ISocialPostService {
+
+    private final SocialPostRepository postRepository;
+    private final SocialTagRepository tagRepository;
+    private final SocialPostLikeRepository likeRepository;
+    private final SocialPostCommentRepository commentRepository;
+    private final EmployeeRepository employeeRepository;
+    private final IEmailService emailService;
+
+    @Override
+    @Transactional
+    public SocialPostResponse createPost(Long actorEmployeeId, SocialPostCreateRequest request) {
+        Employee author = getEmployee(actorEmployeeId);
+
+        SocialPost post = new SocialPost();
+        post.setAuthor(author);
+        post.setTitle(request.getTitle().trim());
+        post.setDescription(request.getDescription().trim());
+        post.setVisibility(request.getVisibility() == null ? SocialVisibility.ALL : request.getVisibility());
+        post.setTags(resolveTags(request.getTags()));
+
+        SocialPost saved = postRepository.save(post);
+        return toPostResponse(saved, Collections.emptyList());
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public SocialPostResponse getPost(Long postId) {
+        SocialPost post = getActivePost(postId);
+        List<SocialCommentResponse> recent = commentRepository.findTop5ByPostAndDeletedAtIsNullOrderByCreatedAtDesc(post)
+                .stream()
+                .map(this::toCommentResponse)
+                .toList();
+        return toPostResponse(post, recent);
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public Page<SocialPostResponse> getFeed(Long authorId, String tag, LocalDateTime from, LocalDateTime to, Pageable pageable) {
+        String normalizedTag = (tag == null || tag.isBlank()) ? null : tag.trim();
+        return postRepository.findFeed(authorId, normalizedTag, from, to, pageable)
+                .map(post -> toPostResponse(post, Collections.emptyList()));
+    }
+
+    @Override
+    @Transactional
+    public SocialPostResponse updatePost(Long postId, Long actorEmployeeId, boolean actorIsHr, SocialPostUpdateRequest request) {
+        SocialPost post = getActivePost(postId);
+
+        if (!actorIsHr && !Objects.equals(post.getAuthor().getId(), actorEmployeeId)) {
+            throw new BusinessException("You can edit only your own post");
+        }
+
+        if (request.getTitle() != null) {
+            String title = request.getTitle().trim();
+            if (title.isBlank()) {
+                throw new BusinessException("Title cannot be blank");
+            }
+            post.setTitle(title);
+        }
+
+        if (request.getDescription() != null) {
+            String description = request.getDescription().trim();
+            if (description.isBlank()) {
+                throw new BusinessException("Description cannot be blank");
+            }
+            post.setDescription(description);
+        }
+
+        if (request.getVisibility() != null) {
+            post.setVisibility(request.getVisibility());
+        }
+
+        if (request.getTags() != null) {
+            post.setTags(resolveTags(request.getTags()));
+        }
+
+        return toPostResponse(postRepository.save(post), Collections.emptyList());
+    }
+
+    @Override
+    @Transactional
+    public void deletePost(Long postId, Long actorEmployeeId, boolean actorIsHr, String reason) {
+        SocialPost post = getActivePost(postId);
+        boolean isOwner = Objects.equals(post.getAuthor().getId(), actorEmployeeId);
+
+        if (!isOwner && !actorIsHr) {
+            throw new BusinessException("You can delete only your own post");
+        }
+
+        post.setDeletedAt(LocalDateTime.now());
+        postRepository.save(post);
+
+        if (actorIsHr && !isOwner) {
+            sendHrDeletionEmail(
+                    post.getAuthor(),
+                    "Your social post was removed by HR",
+                    post.getTitle(),
+                    reason
+            );
+        }
+    }
+
+    @Override
+    @Transactional
+    public SocialLikeResponse likePost(Long postId, Long actorEmployeeId) {
+        SocialPost post = getActivePost(postId);
+        Employee employee = getEmployee(actorEmployeeId);
+
+        if (likeRepository.findByPostAndEmployee(post, employee).isEmpty()) {
+            SocialPostLike like = new SocialPostLike();
+            like.setPost(post);
+            like.setEmployee(employee);
+            likeRepository.save(like);
+            post.setLikeCount(post.getLikeCount() + 1);
+            postRepository.save(post);
+        }
+
+        return new SocialLikeResponse(post.getId(), post.getLikeCount(), true);
+    }
+
+    @Override
+    @Transactional
+    public void unlikePost(Long postId, Long actorEmployeeId) {
+        SocialPost post = getActivePost(postId);
+        Employee employee = getEmployee(actorEmployeeId);
+
+        likeRepository.findByPostAndEmployee(post, employee).ifPresent(like -> {
+            likeRepository.delete(like);
+            post.setLikeCount(Math.max(0, post.getLikeCount() - 1));
+            postRepository.save(post);
+        });
+    }
+
+    private SocialPost getActivePost(Long postId) {
+        return postRepository.findByIdAndDeletedAtIsNull(postId)
+                .orElseThrow(() -> new ResourceNotFoundException("Post not found: " + postId));
+    }
+
+    private Employee getEmployee(Long employeeId) {
+        return employeeRepository.findById(employeeId)
+                .orElseThrow(() -> new ResourceNotFoundException("Employee not found: " + employeeId));
+    }
+
+    private Set<SocialTag> resolveTags(Set<String> tags) {
+        if (tags == null || tags.isEmpty()) {
+            return new HashSet<>();
+        }
+
+        Map<String, String> normalized = new LinkedHashMap<>();
+        for (String value : tags) {
+            if (value == null) {
+                continue;
+            }
+            String trimmed = value.trim();
+            if (!trimmed.isBlank()) {
+                normalized.putIfAbsent(trimmed.toLowerCase(Locale.ROOT), trimmed);
+            }
+        }
+
+        Set<SocialTag> resolved = new HashSet<>();
+        for (String tagName : normalized.values()) {
+            SocialTag tag = tagRepository.findByNameIgnoreCase(tagName)
+                    .orElseGet(() -> {
+                        SocialTag newTag = new SocialTag();
+                        newTag.setName(tagName);
+                        return tagRepository.save(newTag);
+                    });
+            resolved.add(tag);
+        }
+        return resolved;
+    }
+
+    private SocialPostResponse toPostResponse(SocialPost post, List<SocialCommentResponse> recentComments) {
+        return SocialPostResponse.builder()
+                .id(post.getId())
+                .author(toActor(post.getAuthor()))
+                .title(post.getTitle())
+                .description(post.getDescription())
+                .tags(post.getTags().stream().map(SocialTag::getName).sorted(String.CASE_INSENSITIVE_ORDER).toList())
+                .visibility(post.getVisibility())
+                .systemGenerated(post.isSystemGenerated())
+                .systemPostType(post.getSystemPostType())
+                .likeCount(post.getLikeCount())
+                .commentCount(post.getCommentCount())
+                .createdAt(post.getCreatedAt())
+                .updatedAt(post.getUpdatedAt())
+                .recentComments(recentComments)
+                .build();
+    }
+
+    private SocialCommentResponse toCommentResponse(SocialPostComment comment) {
+        return SocialCommentResponse.builder()
+                .id(comment.getId())
+                .postId(comment.getPost().getId())
+                .author(toActor(comment.getAuthor()))
+                .text(comment.getText())
+                .createdAt(comment.getCreatedAt())
+                .updatedAt(comment.getUpdatedAt())
+                .build();
+    }
+
+    private SocialActorResponse toActor(Employee employee) {
+        String firstName = employee.getFirstName() == null ? "" : employee.getFirstName().trim();
+        String lastName = employee.getLastName() == null ? "" : employee.getLastName().trim();
+        String fullName = (firstName + " " + lastName).trim();
+        if (fullName.isBlank()) {
+            fullName = "Employee " + employee.getId();
+        }
+        return new SocialActorResponse(employee.getId(), fullName);
+    }
+
+    private void sendHrDeletionEmail(Employee targetEmployee, String subject, String postTitle, String reason) {
+        if (targetEmployee == null || targetEmployee.getUser() == null || targetEmployee.getUser().getEmail() == null) {
+            return;
+        }
+        String finalReason = (reason == null || reason.isBlank()) ? "Inappropriate content" : reason.trim();
+        String body = """
+                Your content was removed by HR.
+                Title: %s
+                Reason: %s
+                """.formatted(postTitle, finalReason);
+        emailService.send(targetEmployee.getUser().getEmail(), subject, body);
+    }
+}
+
+
+package com.capestone.hrms_backend.service.impl;
+
+import com.capestone.hrms_backend.dto.social.request.SocialCommentCreateRequest;
+import com.capestone.hrms_backend.dto.social.request.SocialCommentUpdateRequest;
+import com.capestone.hrms_backend.dto.social.response.SocialActorResponse;
+import com.capestone.hrms_backend.dto.social.response.SocialCommentResponse;
+import com.capestone.hrms_backend.entity.organization.Employee;
+import com.capestone.hrms_backend.entity.social.SocialPost;
+import com.capestone.hrms_backend.entity.social.SocialPostComment;
+import com.capestone.hrms_backend.exception.BusinessException;
+import com.capestone.hrms_backend.exception.ResourceNotFoundException;
+import com.capestone.hrms_backend.repository.organization.EmployeeRepository;
+import com.capestone.hrms_backend.repository.social.SocialPostCommentRepository;
+import com.capestone.hrms_backend.repository.social.SocialPostRepository;
+import com.capestone.hrms_backend.service.IEmailService;
+import com.capestone.hrms_backend.service.ISocialCommentService;
+import lombok.RequiredArgsConstructor;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
+import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
+
+import java.time.LocalDateTime;
+import java.util.Objects;
+
+@Service
+@RequiredArgsConstructor
+public class SocialCommentServiceImpl implements ISocialCommentService {
+
+    private final SocialPostRepository postRepository;
+    private final SocialPostCommentRepository commentRepository;
+    private final EmployeeRepository employeeRepository;
+    private final IEmailService emailService;
+
+    @Override
+    @Transactional(readOnly = true)
+    public Page<SocialCommentResponse> listComments(Long postId, Pageable pageable) {
+        SocialPost post = getActivePost(postId);
+        return commentRepository.findByPostAndDeletedAtIsNull(post, pageable)
+                .map(this::toResponse);
+    }
+
+    @Override
+    @Transactional
+    public SocialCommentResponse addComment(Long postId, Long actorEmployeeId, SocialCommentCreateRequest request) {
+        SocialPost post = getActivePost(postId);
+        Employee actor = getEmployee(actorEmployeeId);
+
+        String text = request.getText().trim();
+        if (text.isBlank()) {
+            throw new BusinessException("Comment cannot be blank");
+        }
+
+        SocialPostComment comment = new SocialPostComment();
+        comment.setPost(post);
+        comment.setAuthor(actor);
+        comment.setText(text);
+
+        SocialPostComment saved = commentRepository.save(comment);
+        post.setCommentCount(post.getCommentCount() + 1);
+        postRepository.save(post);
+
+        return toResponse(saved);
+    }
+
+    @Override
+    @Transactional
+    public SocialCommentResponse updateComment(Long commentId, Long actorEmployeeId, boolean actorIsHr, SocialCommentUpdateRequest request) {
+        SocialPostComment comment = getActiveComment(commentId);
+        if (!actorIsHr && !Objects.equals(comment.getAuthor().getId(), actorEmployeeId)) {
+            throw new BusinessException("You can edit only your own comment");
+        }
+
+        String text = request.getText().trim();
+        if (text.isBlank()) {
+            throw new BusinessException("Comment cannot be blank");
+        }
+
+        comment.setText(text);
+        return toResponse(commentRepository.save(comment));
+    }
+
+    @Override
+    @Transactional
+    public void deleteComment(Long commentId, Long actorEmployeeId, boolean actorIsHr, String reason) {
+        SocialPostComment comment = getActiveComment(commentId);
+        boolean isOwner = Objects.equals(comment.getAuthor().getId(), actorEmployeeId);
+
+        if (!isOwner && !actorIsHr) {
+            throw new BusinessException("You can delete only your own comment");
+        }
+
+        comment.setDeletedAt(LocalDateTime.now());
+        commentRepository.save(comment);
+
+        SocialPost post = comment.getPost();
+        post.setCommentCount(Math.max(0, post.getCommentCount() - 1));
+        postRepository.save(post);
+
+        if (actorIsHr && !isOwner) {
+            sendHrDeletionEmail(comment.getAuthor(), post.getTitle(), reason);
+        }
+    }
+
+    private SocialPost getActivePost(Long postId) {
+        return postRepository.findByIdAndDeletedAtIsNull(postId)
+                .orElseThrow(() -> new ResourceNotFoundException("Post not found: " + postId));
+    }
+
+    private SocialPostComment getActiveComment(Long commentId) {
+        return commentRepository.findByIdAndDeletedAtIsNull(commentId)
+                .orElseThrow(() -> new ResourceNotFoundException("Comment not found: " + commentId));
+    }
+
+    private Employee getEmployee(Long employeeId) {
+        return employeeRepository.findById(employeeId)
+                .orElseThrow(() -> new ResourceNotFoundException("Employee not found: " + employeeId));
+    }
+
+    private SocialCommentResponse toResponse(SocialPostComment comment) {
+        return SocialCommentResponse.builder()
+                .id(comment.getId())
+                .postId(comment.getPost().getId())
+                .author(toActor(comment.getAuthor()))
+                .text(comment.getText())
+                .createdAt(comment.getCreatedAt())
+                .updatedAt(comment.getUpdatedAt())
+                .build();
+    }
+
+    private SocialActorResponse toActor(Employee employee) {
+        String firstName = employee.getFirstName() == null ? "" : employee.getFirstName().trim();
+        String lastName = employee.getLastName() == null ? "" : employee.getLastName().trim();
+        String fullName = (firstName + " " + lastName).trim();
+        if (fullName.isBlank()) {
+            fullName = "Employee " + employee.getId();
+        }
+        return new SocialActorResponse(employee.getId(), fullName);
+    }
+
+    private void sendHrDeletionEmail(Employee targetEmployee, String postTitle, String reason) {
+        if (targetEmployee == null || targetEmployee.getUser() == null || targetEmployee.getUser().getEmail() == null) {
+            return;
+        }
+        String finalReason = (reason == null || reason.isBlank()) ? "Inappropriate content" : reason.trim();
+        String body = """
+                Your comment on post "%s" was removed by HR.
+                Reason: %s
+                """.formatted(postTitle, finalReason);
+        emailService.send(targetEmployee.getUser().getEmail(), "Your social comment was removed by HR", body);
+    }
+}
+
+
+package com.capestone.hrms_backend.service.impl;
+
+import com.capestone.hrms_backend.entity.organization.Employee;
+import com.capestone.hrms_backend.entity.social.SocialCelebrationRecord;
+import com.capestone.hrms_backend.entity.social.SocialCelebrationType;
+import com.capestone.hrms_backend.entity.social.SocialPost;
+import com.capestone.hrms_backend.entity.social.SocialVisibility;
+import com.capestone.hrms_backend.repository.organization.EmployeeRepository;
+import com.capestone.hrms_backend.repository.social.SocialCelebrationRecordRepository;
+import com.capestone.hrms_backend.repository.social.SocialPostRepository;
+import com.capestone.hrms_backend.service.ISocialCelebrationService;
+import lombok.RequiredArgsConstructor;
+import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
+
+import java.time.LocalDate;
+import java.time.Period;
+import java.util.List;
+
+@Service
+@RequiredArgsConstructor
+public class SocialCelebrationServiceImpl implements ISocialCelebrationService {
+
+    private final SocialCelebrationRecordRepository celebrationRecordRepository;
+    private final SocialPostRepository socialPostRepository;
+    private final EmployeeRepository employeeRepository;
+
+    @Override
+    @Transactional
+    public void runDaily() {
+        LocalDate today = LocalDate.now();
+
+        List<Employee> birthdays = employeeRepository.findEmployeesHavingBirthday(today);
+        for (Employee employee : birthdays) {
+            createCelebrationPostIfMissing(employee, SocialCelebrationType.BIRTHDAY, today);
+        }
+
+        List<Employee> anniversaries = employeeRepository.findEmployeesHavingAnniversary(today);
+        for (Employee employee : anniversaries) {
+            createCelebrationPostIfMissing(employee, SocialCelebrationType.WORK_ANNIVERSARY, today);
+        }
+    }
+
+    private void createCelebrationPostIfMissing(Employee employee, SocialCelebrationType type, LocalDate date) {
+        if (celebrationRecordRepository.existsByEmployeeIdAndCelebrationTypeAndCelebrationDate(employee.getId(), type, date)) {
+            return;
+        }
+
+        SocialPost post = new SocialPost();
+        post.setAuthor(employee);
+        post.setVisibility(SocialVisibility.ALL);
+        post.setSystemGenerated(true);
+        post.setSystemPostType(type);
+
+        if (type == SocialCelebrationType.BIRTHDAY) {
+            post.setTitle("Today is " + safeName(employee) + "'s birthday");
+            post.setDescription("Join in and wish " + safeName(employee) + " a wonderful year ahead.");
+        } else {
+            if (employee.getDoj() == null) {
+                return;
+            }
+            int years = Period.between(employee.getDoj(), date).getYears();
+            if (years <= 0) {
+                return;
+            }
+            post.setTitle(safeName(employee) + " completes " + years + " year(s) at the organization");
+            post.setDescription("Congratulations to " + safeName(employee) + " on the work anniversary.");
+        }
+
+        SocialPost savedPost = socialPostRepository.save(post);
+
+        SocialCelebrationRecord record = new SocialCelebrationRecord();
+        record.setEmployee(employee);
+        record.setCelebrationType(type);
+        record.setCelebrationDate(date);
+        record.setPost(savedPost);
+        celebrationRecordRepository.save(record);
+    }
+
+    private String safeName(Employee employee) {
+        String first = employee.getFirstName() == null ? "" : employee.getFirstName().trim();
+        String last = employee.getLastName() == null ? "" : employee.getLastName().trim();
+        String full = (first + " " + last).trim();
+        return full.isBlank() ? "Employee " + employee.getId() : full;
+    }
+}
+
+
+package com.capestone.hrms_backend.controller.Social;
+
+import com.capestone.hrms_backend.dto.social.request.SocialPostCreateRequest;
+import com.capestone.hrms_backend.dto.social.request.SocialPostUpdateRequest;
+import com.capestone.hrms_backend.dto.social.response.SocialLikeResponse;
+import com.capestone.hrms_backend.dto.social.response.SocialPostResponse;
+import com.capestone.hrms_backend.security.HrmsUserDetails;
+import com.capestone.hrms_backend.service.ISocialPostService;
+import jakarta.validation.Valid;
+import lombok.RequiredArgsConstructor;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
+import org.springframework.data.domain.Sort;
+import org.springframework.data.web.PageableDefault;
+import org.springframework.format.annotation.DateTimeFormat;
+import org.springframework.http.ResponseEntity;
+import org.springframework.security.core.annotation.AuthenticationPrincipal;
+import org.springframework.web.bind.annotation.*;
+import org.springframework.web.servlet.support.ServletUriComponentsBuilder;
+
+import java.net.URI;
+import java.time.LocalDateTime;
+
+@RestController
+@RequestMapping("/social/posts")
+@RequiredArgsConstructor
+public class SocialPostController {
+
+    private final ISocialPostService socialPostService;
+
+    @PostMapping
+    public ResponseEntity<SocialPostResponse> createPost(
+            @AuthenticationPrincipal HrmsUserDetails user,
+            @Valid @RequestBody SocialPostCreateRequest request
+    ) {
+        SocialPostResponse created = socialPostService.createPost(user.getEmployeeId(), request);
+        URI location = ServletUriComponentsBuilder.fromCurrentRequest()
+                .path("/{id}")
+                .buildAndExpand(created.getId())
+                .toUri();
+        return ResponseEntity.created(location).body(created);
+    }
+
+    @GetMapping
+    public ResponseEntity<Page<SocialPostResponse>> getFeed(
+            @RequestParam(required = false) Long authorId,
+            @RequestParam(required = false) String tag,
+            @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE_TIME) LocalDateTime from,
+            @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE_TIME) LocalDateTime to,
+            @PageableDefault(size = 20, sort = "createdAt", direction = Sort.Direction.DESC) Pageable pageable
+    ) {
+        return ResponseEntity.ok(socialPostService.getFeed(authorId, tag, from, to, pageable));
+    }
+
+    @GetMapping("/{postId}")
+    public ResponseEntity<SocialPostResponse> getPost(@PathVariable Long postId) {
+        return ResponseEntity.ok(socialPostService.getPost(postId));
+    }
+
+    @PatchMapping("/{postId}")
+    public ResponseEntity<SocialPostResponse> updatePost(
+            @PathVariable Long postId,
+            @AuthenticationPrincipal HrmsUserDetails user,
+            @Valid @RequestBody SocialPostUpdateRequest request
+    ) {
+        SocialPostResponse updated = socialPostService.updatePost(postId, user.getEmployeeId(), isHr(user), request);
+        return ResponseEntity.ok(updated);
+    }
+
+    @DeleteMapping("/{postId}")
+    public ResponseEntity<Void> deletePost(
+            @PathVariable Long postId,
+            @AuthenticationPrincipal HrmsUserDetails user,
+            @RequestParam(required = false) String reason
+    ) {
+        socialPostService.deletePost(postId, user.getEmployeeId(), isHr(user), reason);
+        return ResponseEntity.noContent().build();
+    }
+
+    @PostMapping("/{postId}/likes")
+    public ResponseEntity<SocialLikeResponse> likePost(
+            @PathVariable Long postId,
+            @AuthenticationPrincipal HrmsUserDetails user
+    ) {
+        return ResponseEntity.ok(socialPostService.likePost(postId, user.getEmployeeId()));
+    }
+
+    @DeleteMapping("/{postId}/likes")
+    public ResponseEntity<Void> unlikePost(
+            @PathVariable Long postId,
+            @AuthenticationPrincipal HrmsUserDetails user
+    ) {
+        socialPostService.unlikePost(postId, user.getEmployeeId());
+        return ResponseEntity.noContent().build();
+    }
+
+    private boolean isHr(HrmsUserDetails user) {
+        return user != null && user.getAuthorities().stream()
+                .anyMatch(a -> "ROLE_HR".equals(a.getAuthority()));
+    }
+}
+
+
+package com.capestone.hrms_backend.controller.Social;
+
+import com.capestone.hrms_backend.dto.social.request.SocialCommentCreateRequest;
+import com.capestone.hrms_backend.dto.social.request.SocialCommentUpdateRequest;
+import com.capestone.hrms_backend.dto.social.response.SocialCommentResponse;
+import com.capestone.hrms_backend.security.HrmsUserDetails;
+import com.capestone.hrms_backend.service.ISocialCommentService;
+import jakarta.validation.Valid;
+import lombok.RequiredArgsConstructor;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
+import org.springframework.data.domain.Sort;
+import org.springframework.data.web.PageableDefault;
+import org.springframework.http.ResponseEntity;
+import org.springframework.security.core.annotation.AuthenticationPrincipal;
+import org.springframework.web.bind.annotation.*;
+
+@RestController
+@RequestMapping("/social")
+@RequiredArgsConstructor
+public class SocialCommentController {
+
+    private final ISocialCommentService socialCommentService;
+
+    @GetMapping("/posts/{postId}/comments")
+    public ResponseEntity<Page<SocialCommentResponse>> listComments(
+            @PathVariable Long postId,
+            @PageableDefault(size = 20, sort = "createdAt", direction = Sort.Direction.DESC) Pageable pageable
+    ) {
+        return ResponseEntity.ok(socialCommentService.listComments(postId, pageable));
+    }
+
+    @PostMapping("/posts/{postId}/comments")
+    public ResponseEntity<SocialCommentResponse> addComment(
+            @PathVariable Long postId,
+            @AuthenticationPrincipal HrmsUserDetails user,
+            @Valid @RequestBody SocialCommentCreateRequest request
+    ) {
+        return ResponseEntity.ok(socialCommentService.addComment(postId, user.getEmployeeId(), request));
+    }
+
+    @PatchMapping("/comments/{commentId}")
+    public ResponseEntity<SocialCommentResponse> updateComment(
+            @PathVariable Long commentId,
+            @AuthenticationPrincipal HrmsUserDetails user,
+            @Valid @RequestBody SocialCommentUpdateRequest request
+    ) {
+        return ResponseEntity.ok(socialCommentService.updateComment(commentId, user.getEmployeeId(), isHr(user), request));
+    }
+
+    @DeleteMapping("/comments/{commentId}")
+    public ResponseEntity<Void> deleteComment(
+            @PathVariable Long commentId,
+            @AuthenticationPrincipal HrmsUserDetails user,
+            @RequestParam(required = false) String reason
+    ) {
+        socialCommentService.deleteComment(commentId, user.getEmployeeId(), isHr(user), reason);
+        return ResponseEntity.noContent().build();
+    }
+
+    private boolean isHr(HrmsUserDetails user) {
+        return user != null && user.getAuthorities().stream()
+                .anyMatch(a -> "ROLE_HR".equals(a.getAuthority()));
+    }
+}
+
+
+package com.capestone.hrms_backend.controller.Social;
+
+import com.capestone.hrms_backend.service.ISocialCelebrationService;
+import lombok.RequiredArgsConstructor;
+import org.springframework.http.ResponseEntity;
+import org.springframework.security.access.prepost.PreAuthorize;
+import org.springframework.web.bind.annotation.PostMapping;
+import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RestController;
+
+@RestController
+@RequestMapping("/social/celebrations")
+@RequiredArgsConstructor
+public class SocialCelebrationController {
+
+    private final ISocialCelebrationService socialCelebrationService;
+
+    @PostMapping("/run-daily")
+    @PreAuthorize("hasRole('HR')")
+    public ResponseEntity<Void> runDaily() {
+        socialCelebrationService.runDaily();
+        return ResponseEntity.noContent().build();
+    }
+}
+
+
+
+
+package com.capestone.hrms_backend.dto.social.request;
+
+import jakarta.validation.constraints.NotBlank;
+import lombok.Getter;
+import lombok.Setter;
+
+@Getter
+@Setter
+public class SocialCommentCreateRequest {
+
+    @NotBlank
+    private String text;
+}
+
+
+package com.capestone.hrms_backend.dto.social.response;
+
+import com.capestone.hrms_backend.entity.social.SocialCelebrationType;
+import com.capestone.hrms_backend.entity.social.SocialVisibility;
+import lombok.Builder;
+import lombok.Getter;
+
+import java.time.LocalDateTime;
+import java.util.List;
+
+@Getter
+@Builder
+public class SocialPostResponse {
+    private Long id;
+    private SocialActorResponse author;
+    private String title;
+    private String description;
+    private List<String> tags;
+    private SocialVisibility visibility;
+    private boolean systemGenerated;
+    private SocialCelebrationType systemPostType;
+    private int likeCount;
+    private int commentCount;
+    private LocalDateTime createdAt;
+    private LocalDateTime updatedAt;
+    private List<SocialCommentResponse> recentComments;
+}
+
+
